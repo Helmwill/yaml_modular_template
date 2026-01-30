@@ -1,0 +1,9 @@
+# ============================================================================
+# QA Environment Pipeline Variables
+# ============================================================================
+# Purpose: Environment-specific variables for the QA environment. Includes
+#          non-secret configuration and references to QA variable groups.
+#
+# Usage: Referenced by pipeline YAML files when deploying to QA
+# Naming Convention: PascalCase for all variables
+# ============================================================================

@@ -1,0 +1,13 @@
+# ============================================================================
+# Continuous Integration Pipeline
+# ============================================================================
+# Purpose: Entry pipeline for CI workflows. Orchestrates build and security
+#          validation using reusable stage/job/step templates.
+#
+# Trigger: Configured by pipeline definition (typically PR + branch triggers)
+# Pull Requests: Runs validation jobs for PRs targeting main branches
+# Artifacts: Publishes build outputs (optional) and/or produces container images
+#
+# Stages:
+#   1. CI - Build, test, and security scanning (template-driven)
+# ============================================================================

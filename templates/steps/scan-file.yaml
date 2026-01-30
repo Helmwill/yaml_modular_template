@@ -1,0 +1,17 @@
+# ============================================================================
+# Step Template - Security Scan
+# ============================================================================
+# Purpose: Executes security scanning against the repository and/or build
+#          outputs. Intended for secret detection, misconfiguration scanning,
+#          and policy validation.
+#
+# Inputs:
+#   - Scan scope (repo, filesystem paths, container image)
+#   - Tool configuration via variables/parameters
+#
+# Outputs:
+#   - Scan results written to logs and/or artifacts (optional)
+#
+# Notes:
+#   - Keep scanner tooling isolated here for consistent enforcement
+# ============================================================================

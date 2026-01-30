@@ -1,0 +1,18 @@
+# ============================================================================
+# Continuous Deployment / Rollback Pipeline
+# ============================================================================
+# Purpose: Manual deployment pipeline for promoting or rolling back a specific
+#          artifact/image tag to a chosen environment (dev, qa, prod).
+#
+# Trigger: Manual only (no automatic triggers)
+# Use Cases:
+#   - Rollback to a previously released image tag
+#   - Hotfix deployment using an explicit tag
+#   - Manual promotion between environments
+#   - Re-deployment of a known good build
+#
+# Stages:
+#   1. Validate - Confirm target artifact/image exists and is deployable
+#   2. Deploy - Deploy specified artifact/image to target environment
+#   3. Summary - Output deployment metadata and validation results
+# ============================================================================

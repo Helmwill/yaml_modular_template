@@ -1,0 +1,9 @@
+# ============================================================================
+# Dev Environment Pipeline Variables
+# ============================================================================
+# Purpose: Environment-specific variables for the DEV environment. Includes
+#          non-secret configuration and references to DEV variable groups.
+#
+# Usage: Referenced by pipeline YAML files when deploying to DEV
+# Naming Convention: PascalCase for all variables
+# ============================================================================
