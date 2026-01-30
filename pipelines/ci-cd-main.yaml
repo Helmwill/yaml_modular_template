@@ -1,0 +1,19 @@
+trigger:
+- main
+
+parameters:
+- name: env
+  type: string
+  default: dev
+  values: [dev, qa, prod]
+
+variables:
+- template: ../variables/common.yaml
+- template: ../variables/groups/${{ parameters.env }}.yaml
+
+stages:
+- template: ../templates/stages/ci.yaml
+
+- template: ../templates/stages/deploy.yaml
+  parameters:
+    env: ${{ parameters.env }}

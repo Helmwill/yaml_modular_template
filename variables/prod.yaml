@@ -1,0 +1,9 @@
+# ============================================================================
+# Prod Environment Pipeline Variables
+# ============================================================================
+# Purpose: Environment-specific variables for the PROD environment. Includes
+#          non-secret configuration and references to PROD variable groups.
+#
+# Usage: Referenced by pipeline YAML files when deploying to PROD
+# Naming Convention: PascalCase for all variables
+# ============================================================================
