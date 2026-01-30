@@ -1,0 +1,18 @@
+# ============================================================================
+# Step Template - Container Build and Push
+# ============================================================================
+# Purpose: Builds a Docker image and pushes it to a configured registry (ACR or
+#          alternative). Produces an immutable image tag for deployment.
+#
+# Inputs:
+#   - Image name/repository
+#   - Dockerfile path / build context
+#   - Registry connection details (from variable groups/service connections)
+#
+# Outputs:
+#   - Container image pushed to registry
+#   - Image tag available to subsequent stages/jobs
+#
+# Notes:
+#   - Credentials must be provided via service connection or variable group
+# ============================================================================

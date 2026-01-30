@@ -1,0 +1,18 @@
+# ============================================================================
+# Job Template - Build and Scan
+# ============================================================================
+# Purpose: Reusable job for building artifacts (e.g., Docker images) and running
+#          security scanning steps. Designed for CI pipelines.
+#
+# Inputs:  Provided via pipeline variables and template parameters
+# Outputs: Build artifacts and/or container images (depending on configuration)
+#
+# Steps:
+#   1. Checkout - Retrieve source code
+#   2. Build - Compile/package or build container image
+#   3. Scan - Security validation (SAST/secret/misconfig scanning)
+#
+# Notes:
+#   - Must remain environment-agnostic
+#   - Secrets and credentials must be sourced via variable groups
+# ============================================================================

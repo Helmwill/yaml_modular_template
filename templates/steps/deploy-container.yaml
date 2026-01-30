@@ -1,0 +1,18 @@
+# ============================================================================
+# Step Template - Deploy Container
+# ============================================================================
+# Purpose: Deploys a specified container image tag to a target environment.
+#          Deployment mechanism is abstracted behind this reusable step.
+#
+# Inputs:
+#   - Target environment identifier (dev/qa/prod)
+#   - Image reference (registry/repository:tag)
+#   - Target runtime configuration (cluster/app settings)
+#
+# Outputs:
+#   - Deployed release to the target environment
+#
+# Notes:
+#   - Environment access should be controlled using Azure DevOps Environments
+#     and/or service connection permissions
+# ============================================================================

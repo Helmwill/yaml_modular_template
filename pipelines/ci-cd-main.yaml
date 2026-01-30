@@ -1,3 +1,26 @@
+# ============================================================================
+# CI/CD Pipeline - All Environments
+# ============================================================================
+# Purpose: End-to-end pipeline for security validation, build, and deployment.
+#          Supports environment selection via variables and/or branch strategy.
+#
+# Trigger Strategy:
+#   - dev branch    → Deploy to DEV (optional)
+#   - qa branch     → Deploy to QA (optional)
+#   - main/master   → Deploy to PROD (optional, gated)
+#
+# Stages:
+#   1. SecurityScanning - Pre-build validation and scanning
+#   2. Build - Create immutable build artifact (e.g., Docker image)
+#   3. Deploy - Deploy to target environment using reusable templates
+#
+# Use Cases:
+#   - Automated build + deploy after successful CI
+#   - Continuous delivery across multiple environments
+#   - Branch-based environment promotion (optional)
+# ============================================================================
+
+
 trigger:
 - main
 
