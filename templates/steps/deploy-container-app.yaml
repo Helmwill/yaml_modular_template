@@ -1,0 +1,100 @@
+
+# ============================================================================
+# Deploy Container App Step Template
+# ============================================================================
+# Purpose:
+#   Deploys an immutable container image to Azure Container Apps
+#
+# Features:
+#   - Managed Identity / ACR integration (configured on the Container App)
+#   - Environment variable injection
+#   - Automatic revision creation
+#   - Optional post-deployment ingress health check
+# ============================================================================
+
+parameters:
+  - name: armServiceConnection
+    type: string
+  - name: resourceGroup
+    type: string
+  - name: containerAppName
+    type: string
+  - name: acrLoginServer
+    type: string
+  - name: imageRepository
+    type: string
+  - name: imageTag
+    type: string
+
+  # Optional runtime config
+  - name: targetPort
+    type: number
+    default: 80
+  - name: ingressType
+    type: string
+    default: external
+
+  # Optional health check
+  - name: healthPath
+    type: string
+    default: /health
+
+steps:
+  # --------------------------------------------------------------------------
+  # Deploy Container App Revision
+  # --------------------------------------------------------------------------
+  - task: AzureCLI@2
+    displayName: "Container App - Deploy Image"
+    inputs:
+      azureSubscription: ${{ parameters.armServiceConnection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+
+        IMAGE="${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:${{ parameters.imageTag }}"
+
+        echo "Deploying image:"
+        echo "  ${IMAGE}"
+        echo "To Container App:"
+        echo "  ${{ parameters.containerAppName }}"
+        echo "Resource Group:"
+        echo "  ${{ parameters.resourceGroup }}"
+
+        az containerapp update \
+          --name "${{ parameters.containerAppName }}" \
+          --resource-group "${{ parameters.resourceGroup }}" \
+          --image "${IMAGE}" \
+          --ingress "${{ parameters.ingressType }}" \
+          --target-port "${{ parameters.targetPort }}"
+
+  # --------------------------------------------------------------------------
+  # Health Check (Ingress-based)
+  # --------------------------------------------------------------------------
+  - task: AzureCLI@2
+    displayName: "Container App - Health Check"
+    inputs:
+      azureSubscription: ${{ parameters.armServiceConnection }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set +e
+
+        echo "Waiting for revision to start..."
+        sleep 45
+
+        FQDN=$(az containerapp show \
+          --name "${{ parameters.containerAppName }}" \
+          --resource-group "${{ parameters.resourceGroup }}" \
+          --query "properties.configuration.ingress.fqdn" \
+          -o tsv)
+
+        if [ -z "$FQDN" ]; then
+          echo "No ingress FQDN found – skipping health check"
+          exit 0
+        fi
+
+        URL="https://${FQDN}${{ parameters.healthPath }}"
+        echo "Checking health endpoint: ${URL}"
+
+        curl -f "${URL}" || true

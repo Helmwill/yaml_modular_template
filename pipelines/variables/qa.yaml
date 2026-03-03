@@ -1,0 +1,36 @@
+# ============================================================================
+# QA Environment Variables
+# ============================================================================
+# Purpose: Environment-specific configuration for the Quality Assurance (QA) environment
+#          Overrides default values from common.yaml
+#
+# Environment: QA/Testing
+# Agent Pool: Self-hosted pool dedicated to QA environment
+# Variable Group: 'qa' (defined in Azure DevOps Library)
+# ============================================================================
+
+variables:
+  # --------------------------------------------------------------------------
+  # Variable Group Reference
+  # --------------------------------------------------------------------------
+  # References Azure DevOps variable group containing sensitive and environment-specific values
+  # Expected variables in group (in Azure DevOps variable group, keep lowercase for backward compatibility):
+  #   - acrName: Azure Container Registry name
+  #   - WebAppName: Azure Web App name
+  #   - ResourceGroup: Azure resource group name
+  #   - KeyVaultName: Azure Key Vault name for secrets
+  #   - ArmServiceConnection: Azure Resource Manager service connection name
+  #   - dockerRegistryServiceConnection: Docker registry service connection
+  - group: qa
+
+  # --------------------------------------------------------------------------
+  # Agent Pool Override
+  # --------------------------------------------------------------------------
+  # Self-hosted agent pool for QA environment
+  # Overrides the default AgentPoolName from common.yaml
+  - name: AgentPoolName
+    value: "Pool-tee-qa-eus-01"
+
+  # Specific agent name within pool (empty = use any available agent in pool)
+  - name: AgentName
+    value: "Agent-tee-qa-linux-01" 

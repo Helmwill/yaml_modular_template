@@ -1,0 +1,80 @@
+# ============================================================================
+# Docker Build & Push Step Template (ACR + cache)
+# ============================================================================
+# Builds and pushes an immutable image tag + a 'cache' tag to ACR.
+# Exposes:
+#   - FullImageName: <acr>/<repo>:<tag>
+#   - ImageDigest  : <acr>/<repo>@sha256:...
+# ============================================================================
+
+parameters:
+  - name: dockerRegistryServiceConnection
+    type: string
+  - name: acrLoginServer
+    type: string        
+  - name: imageRepository
+    type: string
+  - name: imageTag
+    type: string
+  - name: dockerfile
+    type: string
+    default: '$(Build.SourcesDirectory)/Dockerfile'
+  - name: buildContext
+    type: string
+    default: '$(Build.SourcesDirectory)'
+
+steps:
+  - task: Docker@2
+    displayName: "Docker login to ACR"
+    inputs:
+      containerRegistry: ${{ parameters.dockerRegistryServiceConnection }}
+      command: login
+
+  # Pull previous cache image (if exists)
+  - script: |
+      set -e
+      echo "Pulling cache image..."
+      docker pull ${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:cache || true
+    displayName: 'Pull cache image'
+    continueOnError: true
+
+  - task: Docker@2
+    displayName: "Build and push Docker image"
+    inputs:
+      containerRegistry: ${{ parameters.dockerRegistryServiceConnection }}
+      repository: ${{ parameters.imageRepository }}
+      command: buildAndPush
+      dockerfile: ${{ parameters.dockerfile }}
+      buildContext: ${{ parameters.buildContext }}
+      tags: |
+        ${{ parameters.imageTag }}
+        cache
+      arguments: >
+        --cache-from ${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:cache
+        --build-arg BUILDKIT_INLINE_CACHE=1
+
+  - script: |
+      set -euo pipefail
+
+      FULL_IMAGE="${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:${{ parameters.imageTag }}"
+      echo "##vso[task.setvariable variable=FullImageName]${FULL_IMAGE}"
+
+      echo "=============================================="
+      echo " Build Artifact Information"
+      echo "=============================================="
+      echo "Image Tag   : ${{ parameters.imageTag }}"
+      echo "Full Image  : ${FULL_IMAGE}"
+      echo "Cache Tag   : ${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:cache"
+      echo "----------------------------------------------"
+
+      # Try to capture digest if available locally
+      DIGEST="$(docker inspect "${FULL_IMAGE}" --format='{{index .RepoDigests 0}}' 2>/dev/null || true)"
+      if [ -n "${DIGEST}" ]; then
+        echo "Digest      : ${DIGEST}"
+        echo "##vso[task.setvariable variable=ImageDigest]${DIGEST}"
+      else
+        echo "Digest      : N/A (not available locally)"
+      fi
+
+      echo "=============================================="
+    displayName: 'Output Build Artifact Details'
