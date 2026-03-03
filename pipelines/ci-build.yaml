@@ -1,13 +1,101 @@
+
 # ============================================================================
-# Continuous Integration Pipeline
+# PR Validation Pipeline – Snowtee (Azure Container Apps)
 # ============================================================================
-# Purpose: Entry pipeline for CI workflows. Orchestrates build and security
-#          validation using reusable stage/job/step templates.
-#
-# Trigger: Configured by pipeline definition (typically PR + branch triggers)
-# Pull Requests: Runs validation jobs for PRs targeting main branches
-# Artifacts: Publishes build outputs (optional) and/or produces container images
-#
+# Purpose: Validate pull requests safely without publishing images or deploying
 # Stages:
-#   1. CI - Build, test, and security scanning (template-driven)
+#   1. SecurityScanning  - Trivy scans (secrets, SAST, IaC)
+#   2. BuildValidation   - Docker build only (no push)
+# Notes:
+#   - Uses same variables and templates as main CI/CD pipeline
+#   - No ACR/ARM service connections used (safe for PRs)
 # ============================================================================
+
+
+trigger:
+  branches:
+    include:
+      - dev
+      - qa
+      - master
+
+pr:
+  branches:
+    include:
+      - dev
+      - qa
+      - master
+
+variables:
+  - template: ../pipelines/variables/common.yaml
+
+
+  # Determine target environment based on branch (used in display names)
+  - name: TargetEnvironment
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/qa') }}:
+      value: 'qa'
+    ${{ elseif or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: 'prod'
+    ${{ else }}:
+      value: 'dev'
+
+  # Local-only tag for PR build validation
+  - name: ImageTag
+    value: pr-$(Build.BuildId)
+
+pool:
+  name: $(AgentPoolName)
+
+stages:
+# ============================================================================
+# Stage 1: Security Scanning (PR)
+# ============================================================================
+- stage: SecurityScanning
+  displayName: "PR Security Scanning ($(TargetEnvironment))"
+  pool:
+      name: $(AgentPoolName)
+      ${{ if ne(variables['AgentName'], '') }}:
+        demands:
+          - Agent.Name -equals $(AgentName)
+  jobs:
+    - template: ../templates/jobs/security-scan.yaml
+      parameters:
+        severity: ${{ variables.TrivySeverity }}
+        # Fail PRs if findings are above the configured threshold
+        exitCode: ${{ variables.TrivyExitCodePR }}
+        poolName: $(AgentPoolName)
+        targetPath: .
+ 
+
+# ============================================================================
+# Stage 2: Build Validation (no push)
+# - Ensures Dockerfile + context build successfully
+# - Does NOT login, tag 'latest', or push to ACR
+# ============================================================================
+- stage: BuildValidation
+  displayName: "PR Build Validation (no push)"
+  dependsOn: SecurityScanning
+  condition: succeeded()
+  jobs:
+    - job: DockerBuild
+      displayName: "Docker build (no push)"
+      steps:
+        - checkout: self
+          fetchDepth: 0
+
+        # Build locally without using any service connection (safe for PRs)
+        - task: Docker@2
+          displayName: "Build Docker image (local only)"
+          inputs:
+            command: build
+            Dockerfile: Dockerfile
+            buildContext: .
+            repository: $(ImageRepository)
+            tags: |
+              $(ImageTag)
+
+        # Optional: verify image runs (fast fail). Comment out if your image
+        # requires secrets to start.
+        # - script: |
+        #     docker run --rm --entrypoint sh $(ImageRepository):$(ImageTag) -c "echo Image OK"
+        #   displayName: "Smoke test container (optional)"

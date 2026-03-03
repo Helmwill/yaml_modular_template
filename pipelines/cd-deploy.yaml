@@ -1,18 +1,99 @@
-# ============================================================================
-# Continuous Deployment / Rollback Pipeline
-# ============================================================================
-# Purpose: Manual deployment pipeline for promoting or rolling back a specific
-#          artifact/image tag to a chosen environment (dev, qa, prod).
+trigger: none
+pr: none 
+
+parameters: 
+  - name: environment
+    displayName: 'Target Environment'
+    type: string
+    default: 'dev'
+    values:
+      - dev
+      - qa
+      - prod
+
+  - name: imageTag
+    displayName: 'Image Tag (Build ID to deploy/rollback to)'
+    type: string  
+
+  - name: skipHealthCheck
+    displayName: 'Skip Health Check (faster rollback)'
+    type: boolean
+    default: false
+
+  - name: reason
+    displayName: 'Deployment reason'
+    type: string
+    default: 'Rollback to previous stable version'
+    values:
+      - Rollback
+      - Hotfix
+      - re-deploy
+      - Manual Promotion
+
+variables: 
+  - template: ../variables/common.yaml
+
+  - ${{if eq(parameters.environment, 'dev') }}:
+      - template: ../variables/dev.yaml
+  - ${{if eq(parameters.environment, 'qa') }}:
+      - template: ../variables/qa.yaml
+  - ${{if eq(parameters.environment, 'prod') }}:
+      - template: ../variables/prod.yaml
+
+stages: 
+
+# ==========================================================================
+# Stage 1: validate image exists
+# Verifies that the specified image tag exists in Azure Container Registry
+# Prevents deployment failures due to non-existent images
+# Lists available recent tags if validation fails
 #
-# Trigger: Manual only (no automatic triggers)
-# Use Cases:
-#   - Rollback to a previously released image tag
-#   - Hotfix deployment using an explicit tag
-#   - Manual promotion between environments
-#   - Re-deployment of a known good build
-#
-# Stages:
-#   1. Validate - Confirm target artifact/image exists and is deployable
-#   2. Deploy - Deploy specified artifact/image to target environment
-#   3. Summary - Output deployment metadata and validation results
-# ============================================================================
+# =========================================================================
+- stage: ValidateImage
+  displayName: "Validate Image Tag Exists"
+  pool: 
+    name: $(AgentPoolName)       
+    demands: 
+      - Agent.Name -equals $(AgentName)
+  jobs:
+    - job: CheckImage 
+      displayName: "Verify image tag exists in ACR"
+      timeoutInMinutes: 5
+      steps:
+        - checkout: none
+
+        - task: AzureCLI@2
+          name: ValidateImageTag
+          displayName: "Validate $(imageTag) Exists"
+          inputs:
+            azureSubscription: $(dockerRegistryServiceConnection)
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              #!/bin/bash
+              set -e
+
+              echo "validating image for ${{ parameters.reason }}"
+              echo "Environment : ${{ parameters.environment }}"
+              echo "Image Tag   :'${{ parameters.imageTag }}'"
+              echo "ACR         : $(AcrRegistry)"
+              ACR_NAME=$(AcrRegistry)
+              IMAGE_NAME=$(ImageName)
+              IMAGE_TAG='${{ parameters.imageTag }}'
+
+              echo "Checking for image: $IMAGE_NAME:$IMAGE_TAG in ACR: $ACR_NAME"
+
+              # Login to ACR
+              az acr login --name $ACR_NAME
+
+              # Check if the image tag exists
+              TAG_EXISTS=$(az acr repository show-tags --name $ACR_NAME --repository $IMAGE_NAME --query "contains(@, '$IMAGE_TAG')" -o tsv)
+
+              if [ "$TAG_EXISTS" != "true" ]; then
+                echo "Error: Image tag '$IMAGE_TAG' does not exist in repository '$IMAGE_NAME'."
+                echo "Available tags are:"
+                az acr repository show-tags --name $ACR_NAME --repository $IMAGE_NAME --top 10 --output table
+                exit 1
+              else
+                echo "Image tag '$IMAGE_TAG' found in repository '$IMAGE_NAME'. Proceeding with deployment."
+              fi

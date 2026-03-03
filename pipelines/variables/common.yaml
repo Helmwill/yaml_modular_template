@@ -1,0 +1,78 @@
+# ============================================================================
+# Common Pipeline Variables
+# ============================================================================
+# Purpose: Shared configuration variables used across all deployment pipelines
+#          and environments (dev, qa, prod). These values serve as defaults
+#          and can be overridden by environment-specific variable files.
+#
+# Usage: Referenced by all pipeline YAML files via template inclusion
+# Naming Convention: PascalCase for all variables
+# ============================================================================
+
+variables:
+  # --------------------------------------------------------------------------
+  # Container Image Configuration
+  # --------------------------------------------------------------------------
+  # ACR registry name (without domain suffix)
+  AcrRegistry: 'Templatedev'
+
+  # Base image name for the application container
+  ImageName: 'TemplateDevApp'
+
+  # Repository path format for ACR (Azure Container Registry)
+  imageRepository: $(ImageName)
+
+  # --------------------------------------------------------------------------
+  # Security Scanning Configuration
+  # --------------------------------------------------------------------------
+  # Trivy scanner version for vulnerability detection
+  TrivyVersion: '0.48.0'
+
+  # Severity levels to scan for (comma-separated)
+  # Options: CRITICAL, HIGH, MEDIUM, LOW, UNKNOWN
+  TrivySeverity: 'CRITICAL,HIGH'
+
+  # Exit code behavior for pull request scans
+  # 1 = Fail pipeline if vulnerabilities found
+  # 0 = Continue pipeline (report only)
+  TrivyExitCodePR: '1'
+
+  # Exit code behavior for branch builds
+  # 0 = Continue pipeline even with vulnerabilities (non-blocking)
+  TrivyExitCodeBuild: '0'
+
+  # --------------------------------------------------------------------------
+  # Default Agent Pool Configuration
+  # --------------------------------------------------------------------------
+  # Agent pool is defined in environment-specific variable files
+  # (dev.yaml, qa.yaml, prod.yaml) based on the target environment
+
+  # --------------------------------------------------------------------------
+  # Azure Container Registry (ACR) Configuration
+  # --------------------------------------------------------------------------
+  # Service connection name for Docker registry authentication
+  # This value is typically defined in environment-specific variable groups
+  dockerRegistryServiceConnection: $(dockerRegistryServiceConnection)
+
+  # ACR login server URL pattern
+  # Format: <acr-name>.azurecr.io
+  acrLoginServer: $(AcrRegistry).azurecr.io
+
+  # --------------------------------------------------------------------------
+  # Deployment Configuration
+  # --------------------------------------------------------------------------
+  # Maximum time (in seconds) to wait for health check validation
+  # after deployment completes
+  HealthCheckTimeout: 300
+
+  # Typically matches the image name
+  ContainerName: $(ImageName)
+
+  # --------------------------------------------------------------------------
+  # SonarQube Configuration
+  # --------------------------------------------------------------------------
+  # Service connection name for SonarQube authentication
+  #SonarQubeServiceConnection: 'SonarQube-Service'
+  # Project key used by SonarQube to identify the project 
+  #SonarProjectKey: 'snowtee-app'
+  #SonarProjectName: 'Snowtee Application'

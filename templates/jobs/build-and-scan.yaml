@@ -1,18 +1,80 @@
 # ============================================================================
-# Job Template - Build and Scan
+# Build and Scan Job Template
 # ============================================================================
-# Purpose: Reusable job for building artifacts (e.g., Docker images) and running
-#          security scanning steps. Designed for CI pipelines.
+# Purpose: Builds Docker image, pushes to ACR, and performs security scanning
 #
-# Inputs:  Provided via pipeline variables and template parameters
-# Outputs: Build artifacts and/or container images (depending on configuration)
+# Responsibilities:
+#   - Authenticate to Azure Container Registry via ARM service connection
+#   - Build Docker image with multi-stage tagging (buildId + latest)
+#   - Push images to ACR
+#   - Run post-build security scan on container image
 #
-# Steps:
-#   1. Checkout - Retrieve source code
-#   2. Build - Compile/package or build container image
-#   3. Scan - Security validation (SAST/secret/misconfig scanning)
-#
-# Notes:
-#   - Must remain environment-agnostic
-#   - Secrets and credentials must be sourced via variable groups
+# Parameters:
+#   - acrLoginServer: ACR URL (e.g., myregistry.azurecr.io)
+#   - imageName: Container image name
+#   - imageTag: Image tag (typically Build.BuildId)
 # ============================================================================
+
+parameters:
+  - name: acrLoginServer
+    type: string
+  - name: acrName
+    type: string
+  - name: imageRepository
+    type: string
+  - name: imageTag
+    type: string
+  - name: poolName
+    type: string
+ 
+
+jobs:
+  - job: BuildAndPush
+    displayName: "Build & Push Docker Image"
+    pool:
+      name: ${{ parameters.poolName }}
+    steps:
+      # Checkout source code for Docker build context
+      - checkout: self
+
+      # --------------------------------------------------------------------------
+      # Azure Container Registry Authentication
+      # --------------------------------------------------------------------------
+      # Uses Azure CLI with ARM service connection for ACR login
+      # Provides authenticated access for docker push operations
+      - task: AzureCLI@2
+        displayName: "ACR - Login (via ARM Service Connection)"
+        inputs:
+          azureSubscription: "$(armServiceConnection)"
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            set -e
+            echo "Logging into ACR: ${{ parameters.acrName }}"
+            az acr login --name ${{ parameters.acrName }}
+
+      # --------------------------------------------------------------------------
+      # Docker Image Build and Push
+      # --------------------------------------------------------------------------
+      # Builds container image and pushes to ACR with dual tagging:
+      #   1. Build-specific tag (immutable, for rollback)
+      #   2. Latest tag (for convenience)
+      - template: ../steps/docker-build-push.yaml
+        parameters:
+          acrLoginServer: ${{ parameters.acrLoginServer }}
+          imageRepository: ${{ parameters.imageRepository }}
+          imageTag: ${{ parameters.imageTag }}
+          dockerfile: 'src/Dockerfile'
+          buildContext: 'src'
+
+      # --------------------------------------------------------------------------
+      # Post-Build Security Scan
+      # --------------------------------------------------------------------------
+      # Non-blocking Trivy scan of built image
+      # Detects vulnerabilities in dependencies and base images
+      # continueOnError: true allows pipeline to succeed even with findings
+      - script: |
+          trivy image --severity HIGH,CRITICAL --exit-code 0 --format table \
+            ${{ parameters.acrLoginServer }}/${{ parameters.imageRepository }}:${{ parameters.imageTag }}
+        displayName: "Security - Image Scan"
+        continueOnError: true

@@ -1,42 +1,131 @@
 # ============================================================================
-# CI/CD Pipeline - All Environments
+# CI/CD Pipeline – Snowtee (Azure Container Apps)
 # ============================================================================
-# Purpose: End-to-end pipeline for security validation, build, and deployment.
-#          Supports environment selection via variables and/or branch strategy.
-#
-# Trigger Strategy:
-#   - dev branch    → Deploy to DEV (optional)
-#   - qa branch     → Deploy to QA (optional)
-#   - main/master   → Deploy to PROD (optional, gated)
-#
+# Purpose: End-to-end pipeline for security scanning, building, and deploying
+#          to Azure Container Apps with automatic environment selection
+#=============================================================================
+# Trigger Strategy:                                                              
+#   - dev branch    → Auto deploy to DEV (Container App)
+#   - qa branch     → Auto deploy to QA (Container App)
+#   - main/master   → Auto deploy to PROD (Container App)                     
+#=============================================================================
 # Stages:
-#   1. SecurityScanning - Pre-build validation and scanning
-#   2. Build - Create immutable build artifact (e.g., Docker image)
-#   3. Deploy - Deploy to target environment using reusable templates
+#   1. SecurityScanning - Pre-build security validation
+#   2. BuildImage       - Create immutable Docker artifact (ACR)
+#   3. Deploy           - Deploy same image to target Container App
 #
 # Use Cases:
-#   - Automated build + deploy after successful CI
-#   - Continuous delivery across multiple environments
-#   - Branch-based environment promotion (optional)
+#   - Automated deployment after successful build
+#   - Continuous delivery across DEV/QA/PROD
+#   - Branch-based promotion using Container App revisions
 # ============================================================================
 
-
 trigger:
-- main
-
-parameters:
-- name: env
-  type: string
-  default: dev
-  values: [dev, qa, prod]
+  branches:
+    include: [ dev, qa, prod/main ]
+#  paths:
+#    include:
+#      - app/
+#      - requirements.txt
+#      - Dockerfile
+#      - streamlit_ui.py
+#      - .streamlit/
+#      - .azure/**
 
 variables:
-- template: ../variables/common.yaml
-- template: ../variables/groups/${{ parameters.env }}.yaml
+  - template: ../pipelines/variables/common.yaml
 
+  # Conditionally load environment-specific variables based on branch
+  - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/qa') }}:
+    - template: variables/qa.yaml
+  - ${{ if or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+    - template: variables/prod.yaml
+  - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/dev') }}:
+    - template: variables/dev.yaml
+  # Default to dev for all other branches
+  - ${{ if and(ne(variables['Build.SourceBranch'], 'refs/heads/qa'), ne(variables['Build.SourceBranch'], 'refs/heads/dev'), ne(variables['Build.SourceBranch'], 'refs/heads/master'), ne(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+    - template: variables/dev.yaml
+
+  # Image tag based on build ID for traceability
+  - name: ImageTag
+    value: $(Build.BuildId)
+
+  # Determine target environment based on branch
+  - name: TargetEnvironment
+    ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/qa') }}:
+      value: 'qa'
+    ${{ elseif or(eq(variables['Build.SourceBranch'], 'refs/heads/master'), eq(variables['Build.SourceBranch'], 'refs/heads/main')) }}:
+      value: 'prod'
+    ${{ else }}:
+      value: 'dev'
+
+pool:
+  name: $(AgentPoolName)
+
+
+# ============================================================================
+# Stage 1: Security Scanning
+# ============================================================================
 stages:
-- template: ../templates/stages/ci.yaml
+- stage: SecurityScanning
+  displayName: "Security Scanning"
+  jobs:
+    - template: ../templates/jobs/security-scan.yaml
+      parameters:
+        severity: ${{ TrivySeverity }}
+        exitCode: ${{ TrivyExitCodeBuild }}
+        poolName: $(AgentPoolName)
 
-- template: ../templates/stages/deploy.yaml
-  parameters:
-    env: ${{ parameters.env }}
+
+# ============================================================================
+# Stage 2: Build Image
+# ============================================================================
+- stage: BuildImage
+  displayName: "Build & Push Immutable Image"
+  dependsOn: SecurityScanning
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  jobs:
+    - template: ../templates/jobs/build-and-scan.yaml
+      parameters:
+        dockerRegistryServiceConnection: $(dockerRegistryServiceConnection)
+        acrLoginServer: $(AcrLoginServer)
+        acrName: $(AcrRegistryName)
+        imageRepository: $(ImageRepository)
+        imageTag: $(ImageTag)
+        poolName: $(AgentPoolName)
+
+# ============================================================================
+# Stage 3: Deploy to Target Environment
+# ============================================================================
+# Deploys an immutable container image to Azure Container Apps
+# Environment is determined by source branch:
+#   - dev branch    → DEV Container App
+#   - qa branch     → QA Container App
+#   - master branch → PROD Container App
+#
+# Injects environment-specific configuration
+# Creates a new Container App revision per deployment
+# Performs post-deployment health validation
+# ============================================================================
+
+- stage: Deploy
+  displayName: "Deploy to ${{ variables.TargetEnvironment }}"
+  dependsOn: BuildImage
+  condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'))
+  jobs:
+    - deployment: DeployToEnvironment
+      displayName: "Deploy to ${{ variables.TargetEnvironment }} Container App"
+      environment: "snowtee-${{ variables.TargetEnvironment }}"
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: none
+              - template: ../templates/steps/deploy-container-app.yaml
+                parameters:
+                  armServiceConnection: $(ArmServiceConnection)
+                  resourceGroup: $(ResourceGroup)
+                  containerAppName: $(ContainerAppName)
+                  acrLoginServer: $(AcrLoginServer)
+                  imageRepository: $(ImageRepository)
+                  imageTag: $(ImageTag)

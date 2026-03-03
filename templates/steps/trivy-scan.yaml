@@ -1,0 +1,158 @@
+# ============================================================================
+# Trivy Scan Step Template
+# ============================================================================
+# Runs a Trivy scan and publishes JSON + SARIF reports as pipeline artifacts.
+# ============================================================================
+# COPIED FROM CUSTOMERINSIGHTS
+parameters:
+  - name: scanType
+    type: string
+  - name: targetPath
+    type: string
+    default: '.'
+  - name: severity
+    type: string
+  - name: exitCode
+    type: string
+    default: '0'
+  - name: ImageName
+    type: string
+    default: ''
+
+steps:
+  - script: |
+      echo "Verifying Trivy installation..."
+      if ! command -v trivy &> /dev/null; then
+        echo "##vso[task.logissue type=error]Trivy is not installed on this agent"
+        exit 1
+      fi
+      trivy --version
+    displayName: 'Verify Trivy Installation'
+
+# --- FS scan steps (gated as a whole) ---
+  - ${{ if eq(parameters.scanType, 'fs') }}:
+    - script: |
+        set -e
+        echo "=============================================="
+        echo " Trivy FS Scan"
+        echo "=============================================="
+        echo "Target: ${{ parameters.targetPath }}"
+        echo "Severity: ${{ parameters.severity }}"
+        echo "Exit Code on Findings: ${{ parameters.exitCode }}"
+        echo "----------------------------------------------"
+
+        mkdir -p "$(Build.ArtifactStagingDirectory)/trivy-reports"
+
+        echo "[FS] Running table output..."
+        trivy fs \
+          --severity "${{ parameters.severity }}" \
+          --exit-code "${{ parameters.exitCode }}" \
+          --format table \
+          "${{ parameters.targetPath }}"
+      displayName: 'Trivy FS (table)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+    - script: |
+        echo "[FS] Generating JSON report..."
+        trivy fs \
+          --severity "${{ parameters.severity }}" \
+          --format json \
+          --output "$(Build.ArtifactStagingDirectory)/trivy-reports/trivy-fs-report.json" \
+          "${{ parameters.targetPath }}"
+      displayName: 'Trivy FS (json)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+    - script: |
+        echo "[FS] Generating SARIF report..."
+        trivy fs \
+          --severity "${{ parameters.severity }}" \
+          --format sarif \
+          --output "$(Build.ArtifactStagingDirectory)/trivy-reports/trivy-fs-report.sarif" \
+          "${{ parameters.targetPath }}"
+      displayName: 'Trivy FS (sarif)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+  # --- Config scan steps (gated as a whole) ---
+  - ${{ if eq(parameters.scanType, 'config') }}:
+    - script: |
+        set -e
+        echo "=============================================="
+        echo " Trivy Config Scan"
+        echo "=============================================="
+        echo "Target: ${{ parameters.targetPath }}"
+        echo "Severity: ${{ parameters.severity }}"
+        echo "Exit Code on Findings: ${{ parameters.exitCode }}"
+        echo "----------------------------------------------"
+
+        mkdir -p "$(Build.ArtifactStagingDirectory)/trivy-reports"
+
+        echo "[Config] Running table output..."
+        trivy config \
+          --severity "${{ parameters.severity }}" \
+          --exit-code "${{ parameters.exitCode }}" \
+          --format table \
+          "${{ parameters.targetPath }}"
+      displayName: 'Trivy Config (table)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+    - script: |
+        echo "[Config] Generating JSON report..."
+        trivy config \
+          --severity "${{ parameters.severity }}" \
+          --format json \
+          --output "$(Build.ArtifactStagingDirectory)/trivy-reports/trivy-config-report.json" \
+          "${{ parameters.targetPath }}"
+      displayName: 'Trivy Config (json)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+  # --- Image scan steps (gated as a whole) ---
+  - ${{ if eq(parameters.scanType, 'image') }}:
+    - script: |
+        set -e
+        echo "=============================================="
+        echo " Trivy Image Scan"
+        echo "=============================================="
+        echo "Image: ${{ parameters.imageName }}"
+        echo "Severity: ${{ parameters.severity }}"
+        echo "Exit Code on Findings: ${{ parameters.exitCode }}"
+        echo "----------------------------------------------"
+
+        mkdir -p "$(Build.ArtifactStagingDirectory)/trivy-reports"
+
+        echo "[Image] Running table output..."
+        trivy image \
+          --severity "${{ parameters.severity }}" \
+          --exit-code "${{ parameters.exitCode }}" \
+          --format table \
+          "${{ parameters.imageName }}"
+      displayName: 'Trivy Image (table)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+    - script: |
+        echo "[Image] Generating JSON report..."
+        trivy image \
+          --severity "${{ parameters.severity }}" \
+          --format json \
+          --output "$(Build.ArtifactStagingDirectory)/trivy-reports/trivy-image-report.json" \
+          "${{ parameters.imageName }}"
+      displayName: 'Trivy Image (json)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+    - script: |
+        echo "[Image] Generating SARIF report..."
+        trivy image \
+          --severity "${{ parameters.severity }}" \
+          --format sarif \
+          --output "$(Build.ArtifactStagingDirectory)/trivy-reports/trivy-image-report.sarif" \
+          "${{ parameters.imageName }}"
+      displayName: 'Trivy Image (sarif)'
+      continueOnError: ${{ eq(parameters.exitCode, '0') }}
+
+  # --- Publish artifacts (always) ---
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Trivy Scan Reports'
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)/trivy-reports'
+      ArtifactName: 'trivy-${{ parameters.scanType }}-reports'
+      publishLocation: 'Container'
+    condition: always()
