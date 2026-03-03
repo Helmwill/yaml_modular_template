@@ -1,0 +1,10 @@
+# ============================================================================
+# Common Pipeline Variables
+# ============================================================================
+# Purpose: Shared configuration variables used across all deployment pipelines
+#          and environments (dev, qa, prod). These values serve as defaults
+#          and can be overridden by environment-specific variable files.
+#
+# Usage: Referenced by all pipeline YAML files via template inclusion
+# Naming Convention: PascalCase for all variables
+# ============================================================================

@@ -1,0 +1,15 @@
+# ============================================================================
+# Job Template - Run Scan Steps
+# ============================================================================
+# Purpose: Executes a standardized set of security scanning steps via step
+#          templates. Used to centralize scan tooling and configuration.
+#
+# Inputs:  Scan configuration via parameters and pipeline variables
+# Outputs: Scan results in pipeline logs and/or published artifacts (optional)
+#
+# Steps:
+#   1. Scan - Execute one or more scan step templates
+#
+# Notes:
+#   - Add new scanners by extending step templates, not by duplicating logic
+# ============================================================================
