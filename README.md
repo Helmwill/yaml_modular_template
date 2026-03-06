@@ -89,3 +89,4 @@ This project serves as:
 - A DevOps portfolio demonstration
 - Practical preparation aligned to **AZ-400**
 
+# Used Claude to create readme layout
