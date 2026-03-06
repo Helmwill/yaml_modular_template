@@ -1,56 +1,48 @@
-**Modular Azure DevOps Pipeline Template
+# Modular Azure DevOps Pipeline Template
 
-Enterprise-ready Azure DevOps YAML pipeline template implementing modular design, multi-environment deployments, and build-once deploy-many principles.
+> Enterprise-ready Azure DevOps YAML pipeline template implementing modular design, multi-environment deployments and build-once deploy-many principles.
 
-Overview
+---
+
+## Overview
 
 This repository demonstrates a production-style CI/CD architecture using:
 
-Modular YAML templates (stages / jobs / steps separation)
+- Modular YAML templates (stages / jobs / steps separation)
+- Multi-environment deployments (Dev / QA / Prod)
+- Azure DevOps Variable Groups
+- Azure Key Vault integration
+- Azure Container Registry (ACR)
+- Service Connections for secure authentication
+- Immutable artifact versioning
 
-Multi-environment deployments (Dev / QA / Prod)
+Designed to reflect enterprise DevOps patterns aligned with **AZ-400** best practices.
 
-Azure DevOps Variable Groups
+---
 
-Azure Key Vault integration
+## Architecture Principles
 
-Azure Container Registry (ACR)
+### Build Once, Deploy Many
+- Docker image built in CI
+- Tagged with immutable build ID
+- Promoted across environments without rebuild
 
-Service Connections for secure authentication
+### Environment Isolation
+- Dedicated variable groups per environment
+- Secure secret retrieval from Azure Key Vault
+- Controlled production approvals via ADO Environments
 
-Immutable artifact versioning
+### Modular YAML Design
+- Reusable stage templates
+- Reusable job templates
+- Reusable step templates
+- Separation of concerns for maintainability
 
-Designed to reflect enterprise DevOps patterns aligned with AZ-400 best practices.
+---
 
-Architecture Principles
+## Repository Structure
 
-Build Once, Deploy Many
-
-Docker image built in CI
-
-Tagged with immutable build ID
-
-Promoted across environments without rebuild
-
-Environment Isolation
-
-Dedicated variable groups per environment
-
-Secure secret retrieval from Azure Key Vault
-
-Controlled production approvals via ADO Environments
-
-Modular YAML Design
-
-Reusable stage templates
-
-Reusable job templates
-
-Reusable step templates
-
-Separation of concerns for maintainability
-
-Repository Structure
+```
 .azure/
 │
 ├── pipelines/
@@ -59,40 +51,41 @@ Repository Structure
 │   ├── cd-qa.yml
 │   └── cd-prod.yml
 │
-├── templates/
-│   ├── stages/
-│   ├── jobs/
-│   └── steps/
-Security & Governance
+└── templates/
+    ├── stages/
+    ├── jobs/
+    └── steps/
+```
 
-No secrets stored in YAML
+---
 
-Azure Service Connections for authentication
+## Security & Governance
 
-Key Vault-backed Variable Groups
+| Practice | Detail |
+|---|---|
+| No secrets in YAML | All secrets managed externally |
+| Service Connections | Azure-native secure authentication |
+| Key Vault-backed Variable Groups | Runtime secret injection |
+| Environment approvals | Gate-controlled production deployments |
+| Immutable container tagging | Full traceability per build |
 
-Environment approvals for production
+---
 
-Immutable container tagging for traceability
+## Key Capabilities Demonstrated
 
-Key Capabilities Demonstrated
+- Multi-stage YAML pipelines
+- Infrastructure-aware CI/CD design
+- Secure secret management
+- Docker image lifecycle management
+- Enterprise pipeline modularisation
 
-Multi-stage YAML pipelines
+---
 
-Infrastructure-aware CI/CD design
-
-Secure secret management
-
-Docker image lifecycle management
-
-Enterprise pipeline modularisation
-
-Purpose
+## Purpose
 
 This project serves as:
 
-A reusable CI/CD foundation
+- A reusable CI/CD foundation
+- A DevOps portfolio demonstration
+- Practical preparation aligned to **AZ-400**
 
-A DevOps portfolio demonstration
-
-Practical preparation aligned to AZ-400**
