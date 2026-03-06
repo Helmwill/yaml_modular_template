@@ -1,6 +1,6 @@
 # Modular Azure DevOps Pipeline Template
 
-> Enterprise-ready Azure DevOps YAML pipeline template implementing modular design, multi-environment deployments, and build-once deploy-many principles.
+> Enterprise-ready Azure DevOps YAML pipeline template implementing modular design, multi-environment deployments and build-once deploy-many principles.
 
 ---
 
