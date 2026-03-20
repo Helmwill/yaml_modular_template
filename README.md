@@ -55,7 +55,11 @@ Designed to reflect enterprise DevOps patterns aligned with **AZ-400** best prac
     ├── stages/
     ├── jobs/
     └── steps/
+
+terraform/                  ← Azure infrastructure (VNet, Key Vault, ACR, Container Apps, ADO agent pools)
 ```
+
+The `terraform/` directory contains all infrastructure that backs these pipelines — see [`terraform/README.md`](terraform/README.md) for full details.
 
 ---
 

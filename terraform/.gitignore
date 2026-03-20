@@ -1,0 +1,33 @@
+# Terraform state files — never commit state to version control
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+
+# Terraform working directories
+.terraform/
+.terraform.lock.hcl
+
+# Plan output files (contain resolved variable values including secrets)
+*.tfplan
+tfplan
+tfplan-destroy
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Override files (local developer overrides — not for sharing)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable files that may contain secrets
+# terraform.tfvars is committed (non-secret defaults only)
+# *.auto.tfvars is excluded as it may be generated with secrets
+*.auto.tfvars
+*.auto.tfvars.json
+
+# CLI configuration
+.terraformrc
+terraform.rc
